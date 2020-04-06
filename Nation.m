@@ -1,6 +1,9 @@
 classdef Nation < handle
     
     properties
+        name
+        iso_code
+        
         info
         shape
         pop_density
@@ -18,14 +21,61 @@ classdef Nation < handle
             geoshow(ax,this.pop_density.A,this.pop_density.R,'DisplayType','surface');
         end
         
+        function plotShape(this,ax)
+            arguments
+                this
+                ax matlab.graphics.axis.Axes = this.CreateNewAxes();
+            end
+            mapshow(ax,this.shape.X,this.shape.Y);            
+        end
+        
+        function plotPopulationDistribution(this,ax)
+            arguments
+                this
+                ax matlab.graphics.axis.Axes = this.CreateNewAxes();
+            end
+            % ax.NextPlot = 'add';
+            % axis square;            
+            Z = this.pop_density.A;
+            R = this.pop_density.R;
+            [lat,lon] = meshgrat(Z,R);
+            
+            A = min(Z,[],'all' );
+            B = max(Z,[],'all' );
+            C = ((Z-A) / B);
+            
+            surf( ax, lon, lat, Z, C, 'EdgeColor', 'none' );
+            ax.NextPlot = 'add';
+            % ax.XDir = 'reverse';
+            % ax.YDir = 'reverse';
+            this.plotShape(ax);
+            
+        end
+        
         function [B,RB] = findPopulationDensityData( this )
             [A,RA] = this.ReadPopulationDensityData();
             ylimits = this.shape.BoundingBox(:,1);
             xlimits = this.shape.BoundingBox(:,2);
             [B,RB] = geocrop(A,RA,xlimits,ylimits);
+            
             B(B < -1e9) = nan;
+            
+            Z = zeros(RB.RasterSize);
+            [lat,lon] = meshgrat(Z,RB);
+            mask = inpolygon(lon,lat,this.shape.X,this.shape.Y);
+            B(~mask) = NaN;
+            
             this.pop_density.A = B; 
             this.pop_density.R = RB;
+        end
+    end
+    
+    methods %get;set
+        function name = get.name( this )
+            name = this.info.NAME0;
+        end
+        function iso_code = get.iso_code( this )
+            iso_code = this.info.ISOCODE;
         end
     end
     
@@ -33,6 +83,9 @@ classdef Nation < handle
         function ax = CreateNewAxes()
             fig = figure;
             ax = axes;
+        end
+        function obj = FindByIsoCode( iso )
+            obj = Nation.FindNation("ISOCODE",iso);
         end
         function obj = FindNation( name,value )
             arguments (Repeating)
@@ -61,6 +114,11 @@ classdef Nation < handle
             obj.info = info;
             obj.shape = shape;
             obj.findPopulationDensityData();
+        end
+        
+        function codes = GetAllIsoCodes()
+            [~,A] = Nation.ReadNationalIdentifierFile();
+            codes = {A.ISOCODE}';
         end
         function [S,A] = ReadNationalIdentifierFile()
             persistent s
