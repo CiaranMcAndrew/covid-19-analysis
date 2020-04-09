@@ -57,8 +57,12 @@ classdef Nation < handle
             ylimits = this.shape.BoundingBox(:,1);
             xlimits = this.shape.BoundingBox(:,2);
             [B,RB] = geocrop(A,RA,xlimits,ylimits);
+            B(B < -1e9) = nan; 
             
-            B(B < -1e9) = nan;
+            % Reduce by 25%
+            [B,RB] = georesize(B,RB,0.25);
+            
+            B(B < -1e9) = nan;            
             
             Z = zeros(RB.RasterSize);
             [lat,lon] = meshgrat(Z,RB);
